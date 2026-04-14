@@ -3,6 +3,9 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
+const cors = require("cors");
+
+app.use(cors());
 
 // JSON endpoint
 app.get("/sentences/:id", (req, res) => {
