@@ -61,38 +61,36 @@ function search(rawQuery) {
   const q = rawQuery.trim().toLowerCase();
   if (!q) return [];
 
-  // Cache hit
   if (cache.has(q)) return cache.get(q);
 
   const resultSet = new Set();
 
-  // 1) Exact word match
+  // 1) exact match
   const exact = index.get(q);
   if (exact) {
-    for (const s of exact) {
-      resultSet.add(s);
-      if (resultSet.size >= 5) break;
-    }
+    for (const s of exact) resultSet.add(s);
   }
 
-  // 2) Prefix match — sadece exact yetersizse ve sorgu >= 3 harf ise
-  if (resultSet.size < 5 && q.length >= 3) {
+  // 2) partial match OPTIMIZED (TAM MAP SCAN yerine LIMIT)
+  if (resultSet.size < 5) {
+    let checked = 0;
     for (const [word, sentences] of index) {
-      if (word !== q && word.startsWith(q)) {
+      if (word.startsWith(q)) {
         for (const s of sentences) {
           resultSet.add(s);
           if (resultSet.size >= 5) break;
         }
       }
-      if (resultSet.size >= 5) break;
+
+      checked++;
+      if (checked > 5000) break; // 🔥 KRİTİK PERF LIMIT
     }
   }
 
   const results = Array.from(resultSet).slice(0, 5);
 
-  // Cache'e yaz (LRU benzeri: max 1000, sonra en eski silinir)
-  if (cache.size >= 1000) cache.delete(cache.keys().next().value);
   cache.set(q, results);
+  if (cache.size > 1000) cache.delete(cache.keys().next().value);
 
   return results;
 }
